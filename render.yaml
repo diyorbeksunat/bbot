@@ -1,10 +1,11 @@
 services:
-  - type: worker
+  - type: web
     name: legalix-mandat-bot
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     autoDeploy: true
+    healthCheckPath: /health
     disk:
       name: legalix-mandat-data
       mountPath: /var/data

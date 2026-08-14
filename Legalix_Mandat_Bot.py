@@ -30,6 +30,7 @@ import html
 import io
 import json
 import logging
+import os
 import re
 import sqlite3
 import time
@@ -41,6 +42,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -2621,14 +2623,41 @@ async def monitor_loop(bot: Bot):
 # ============================================================
 # MAIN
 # ============================================================
+async def health_root(request):
+    return web.Response(text="Legalix Mandat Bot is running", status=200)
+
+
+async def health_check(request):
+    return web.Response(text="OK", status=200)
+
+
+async def start_health_server():
+    app = web.Application()
+    app.router.add_get("/", health_root)
+    app.router.add_get("/health", health_check)
+    runner = web.AppRunner(app, access_log=None)
+    await runner.setup()
+    port = int(os.getenv("PORT", "10000"))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    log.info("HTTP health server listening on 0.0.0.0:%s", port)
+    return runner
+
+
 async def main():
     bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    health_runner = await start_health_server()
     # Warm the real /Bakalavr pagination specification in the background so the
     # first user who presses "🏆 Reytingim" does not have to wait for Chromium discovery.
-    asyncio.create_task(asyncio.to_thread(client._detect_bachelor_page_param))
+    try:
+        detect = getattr(client, "_detect_bachelor_page_param", None)
+        if detect:
+            asyncio.create_task(asyncio.to_thread(detect))
+    except Exception:
+        log.exception("Pagination warm-up failed")
     task = asyncio.create_task(monitor_loop(bot))
     try:
-        log.info("Legalix Mandat Bot TOMORROW starting...")
+        log.info("Legalix Mandat Bot WEB SERVICE starting...")
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         task.cancel()
@@ -2637,6 +2666,7 @@ async def main():
         except asyncio.CancelledError:
             pass
         await bot.session.close()
+        await health_runner.cleanup()
 
 
 if __name__ == "__main__":
