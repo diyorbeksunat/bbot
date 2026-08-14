@@ -1,8 +1,0 @@
-.git
-.gitignore
-README.md
-*.pyc
-__pycache__/
-*.sqlite3
-*.log
-mandat_debug_last.html
