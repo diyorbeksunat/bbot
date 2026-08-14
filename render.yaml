@@ -1,0 +1,11 @@
+services:
+  - type: worker
+    name: legalix-mandat-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    disk:
+      name: legalix-mandat-data
+      mountPath: /var/data
+      sizeGB: 1
